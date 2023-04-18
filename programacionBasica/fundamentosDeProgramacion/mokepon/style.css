@@ -61,7 +61,7 @@ input {
 }
 
 input:checked + label {
-  background-color: #5D8BF4;
+  background-color: #ffb600;
 }
 
 #seleccionar-ataque {
