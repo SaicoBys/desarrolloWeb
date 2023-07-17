@@ -24,7 +24,9 @@ const sectionVerMapa = document.getElementById("ver-mapa");
 const mapa = document.getElementById("mapa");
 
 let jugadorId = null;
+let enemigoId = null;
 let mokepones = [];
+let mokeponesEnemigos = [];
 let ataqueJugador = [];
 let ataqueEnemigo = [];
 let opcionDeMokepones;
@@ -63,7 +65,7 @@ mapa.width = anchoDelMapa;
 mapa.height = alturaQueBuscamos;
 
 class Mokepon {
-  constructor(nombre, foto, vida, fotoMapa, id = null) {
+  constructor(nombre, foto, vida, fotoMapa, id = 0) {
     this.id = id;
     this.nombre = nombre;
     this.foto = foto;
@@ -113,8 +115,6 @@ const HIPODOGE_ATAQUES = [
   { nombre: "🌱", id: "boton-tierra" },
 ];
 
-hipodoge.ataques.push(...HIPODOGE_ATAQUES);
-
 const CAPIPEPO_ATAQUES = [
   { nombre: "🌱", id: "boton-tierra" },
   { nombre: "🌱", id: "boton-tierra" },
@@ -122,8 +122,6 @@ const CAPIPEPO_ATAQUES = [
   { nombre: "💧", id: "boton-agua" },
   { nombre: "🔥", id: "boton-fuego" },
 ];
-
-capipepo.ataques.push(...CAPIPEPO_ATAQUES);
 
 const RATIGUEYA_ATAQUES = [
   { nombre: "🔥", id: "boton-fuego" },
@@ -133,6 +131,8 @@ const RATIGUEYA_ATAQUES = [
   { nombre: "🌱", id: "boton-tierra" },
 ];
 
+hipodoge.ataques.push(...HIPODOGE_ATAQUES);
+capipepo.ataques.push(...CAPIPEPO_ATAQUES);
 ratigueya.ataques.push(...RATIGUEYA_ATAQUES);
 
 mokepones.push(hipodoge, capipepo, ratigueya);
@@ -164,9 +164,9 @@ function iniciarJuego() {
 }
 
 function unirseAlJuego() {
-  fetch("http://localhost:8080/unirse").then(function (res) {
+  fetch("http://192.168.10.116:8080/unirse").then((res) => {
     if (res.ok) {
-      res.text().then(function (respuesta) {
+      res.text().then((respuesta) => {
         console.log(respuesta);
         jugadorId = respuesta;
       });
@@ -175,8 +175,6 @@ function unirseAlJuego() {
 }
 
 function seleccionarMascotaJugador() {
-  sectionSeleccionarMascota.style.display = "none";
-
   if (inputHipodoge.checked) {
     spanMascotaJugador.innerHTML = inputHipodoge.id;
     mascotaJugador = inputHipodoge.id;
@@ -188,7 +186,10 @@ function seleccionarMascotaJugador() {
     mascotaJugador = inputRatigueya.id;
   } else {
     alert("Selecciona una mascota");
+    return;
   }
+
+  sectionSeleccionarMascota.style.display = "none";
 
   seleccionarMokepon(mascotaJugador);
 
@@ -198,7 +199,7 @@ function seleccionarMascotaJugador() {
 }
 
 function seleccionarMokepon(mascotaJugador) {
-  fetch(`http://localhost:8080/mokepon/${jugadorId}`, {
+  fetch(`http://192.168.10.116:8080/mokepon/${jugadorId}`, {
     method: "post",
     headers: {
       "Content-Type": "application/json",
@@ -252,9 +253,45 @@ function secuenciaAtaque() {
         boton.style.background = "#112f58";
         boton.disabled = true;
       }
-      ataqueAleatorioEnemigo();
+
+      if (ataqueJugador.length === 5) {
+        enviarAtaques();
+      }
     });
   });
+}
+
+function enviarAtaques() {
+  console.log("Enviar ataques", ataqueJugador);
+
+  fetch(`http://192.168.10.116:8080/mokepon/${jugadorId}/ataques`, {
+    method: "post",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ataques: ataqueJugador,
+    }),
+  });
+
+  intervalo = setInterval(obtenerAtaques, 50);
+}
+
+function obtenerAtaques() {
+  console.log("OBTENER ATAQUES");
+
+  fetch(`http://192.168.10.116:8080/mokepon/${enemigoId}/ataques`).then(
+    function (res) {
+      if (res.ok) {
+        res.json().then(function ({ ataques }) {
+          if (ataques.length === 5) {
+            ataqueEnemigo = ataques;
+            combate();
+          }
+        });
+      }
+    }
+  );
 }
 
 function seleccionarMascotaEnemigo(enemigo) {
@@ -263,26 +300,26 @@ function seleccionarMascotaEnemigo(enemigo) {
   secuenciaAtaque();
 }
 
-function ataqueAleatorioEnemigo() {
-  console.log("Ataques enemigo", ataquesMokeponEnemigo);
-  let ataqueAleatorio = aleatorio(0, ataquesMokeponEnemigo.length - 1);
+// function ataqueAleatorioEnemigo() {
+//     console.log('Ataques enemigo', ataquesMokeponEnemigo);
+//     let ataqueAleatorio = aleatorio(0,ataquesMokeponEnemigo.length -1)
 
-  if (ataqueAleatorio == 0 || ataqueAleatorio == 1) {
-    ataqueEnemigo.push("FUEGO");
-  } else if (ataqueAleatorio == 3 || ataqueAleatorio == 4) {
-    ataqueEnemigo.push("AGUA");
-  } else {
-    ataqueEnemigo.push("TIERRA");
-  }
-  console.log(ataqueEnemigo);
-  iniciarPelea();
-}
+//     if (ataqueAleatorio == 0 || ataqueAleatorio ==1) {
+//         ataqueEnemigo.push('FUEGO')
+//     } else if (ataqueAleatorio == 3 || ataqueAleatorio == 4) {
+//         ataqueEnemigo.push('AGUA')
+//     } else {
+//         ataqueEnemigo.push('TIERRA')
+//     }
+//     console.log(ataqueEnemigo)
+//     iniciarPelea()
+// }
 
-function iniciarPelea() {
-  if (ataqueJugador.length === 5) {
-    combate();
-  }
-}
+// function iniciarPelea() {
+//     if (ataqueJugador.length === 5) {
+//         combate()
+//     }
+// }
 
 function indexAmbosOponente(jugador, enemigo) {
   indexAtaqueJugador = ataqueJugador[jugador];
@@ -290,6 +327,9 @@ function indexAmbosOponente(jugador, enemigo) {
 }
 
 function combate() {
+  clearInterval(intervalo);
+  console.log("COMBATE");
+
   for (let index = 0; index < ataqueJugador.length; index++) {
     if (ataqueJugador[index] === ataqueEnemigo[index]) {
       indexAmbosOponente(index, index);
@@ -376,21 +416,14 @@ function pintarCanvas() {
 
   enviarPosicion(mascotaJugadorObjeto.x, mascotaJugadorObjeto.y);
 
-  hipodogeEnemigo.pintarMokepon();
-  capipepoEnemigo.pintarMokepon();
-  ratigueyaEnemigo.pintarMokepon();
-  if (
-    mascotaJugadorObjeto.velocidadX !== 0 ||
-    mascotaJugadorObjeto.velocidadY !== 0
-  ) {
-    revisarColision(hipodogeEnemigo);
-    revisarColision(capipepoEnemigo);
-    revisarColision(ratigueyaEnemigo);
-  }
+  mokeponesEnemigos.forEach(function (mokepon) {
+    mokepon.pintarMokepon();
+    revisarColision(mokepon);
+  });
 }
 
 function enviarPosicion(x, y) {
-  fetch(`http://localhost:8080/mokepon/${jugadorId}/posicion`, {
+  fetch(`http://192.168.10.116:8080/mokepon/${jugadorId}/posicion`, {
     method: "post",
     headers: {
       "Content-Type": "application/json",
@@ -402,37 +435,42 @@ function enviarPosicion(x, y) {
   }).then(function (res) {
     if (res.ok) {
       res.json().then(function ({ enemigos }) {
-        console.log(enemigos);
-        enemigos.forEach(function (enemigo) {
+        mokeponesEnemigos = enemigos.map(function (enemigo) {
+          console.log({ enemigo });
+
           let mokeponEnemigo = null;
           const mokeponNombre = enemigo.mokepon.nombre || "";
+
           if (mokeponNombre === "Hipodoge") {
             mokeponEnemigo = new Mokepon(
               "Hipodoge",
               "./assets/mokepons_mokepon_hipodoge_attack.png",
               5,
-              "./assets/hipodoge.png"
+              "./assets/hipodoge.png",
+              enemigo.id
             );
           } else if (mokeponNombre === "Capipepo") {
             mokeponEnemigo = new Mokepon(
               "Capipepo",
               "./assets/mokepons_mokepon_capipepo_attack.png",
               5,
-              "./assets/capipepo.png"
+              "./assets/capipepo.png",
+              enemigo.id
             );
           } else if (mokeponNombre === "Ratigueya") {
             mokeponEnemigo = new Mokepon(
               "Ratigueya",
               "./assets/mokepons_mokepon_ratigueya_attack.png",
               5,
-              "./assets/ratigueya.png"
+              "./assets/ratigueya.png",
+              enemigo.id
             );
           }
 
-          mokeponEnemigo.x = enemigo.x;
-          mokeponEnemigo.y = enemigo.y;
+          mokeponEnemigo.x = enemigo.x || 0;
+          mokeponEnemigo.y = enemigo.y || 0;
 
-          mokeponEnemigo.pintarMokepon();
+          return mokeponEnemigo;
         });
       });
     }
@@ -520,6 +558,8 @@ function revisarColision(enemigo) {
   detenerMovimiento();
   clearInterval(intervalo);
   console.log("Se detecto una colision");
+
+  enemigoId = enemigo.id;
   sectionSeleccionarAtaque.style.display = "flex";
   sectionVerMapa.style.display = "none";
   seleccionarMascotaEnemigo(enemigo);
